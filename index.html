@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Calculadora</title>
+<meta name="theme-color" content="#f7f8f6" />
+<style>
+  :root {
+    --canvas: #f7f8f6;
+    --surface: #ffffff;
+    --ink: #1d2a2a;
+    --ink-soft: #667272;
+    --line: #e3e8e5;
+    --line-strong: #cfd7d3;
+    --primary: #1f5e5a;
+    --primary-dark: #174844;
+    --key: #fbfbfa;
+    --key-hover: #f2f4f2;
+    --warn: #b54040;
+    --accent: #eaf1f0;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --canvas: #151a1a;
+      --surface: #1d2424;
+      --ink: #eef2f1;
+      --ink-soft: #9aa6a5;
+      --line: #2b3434;
+      --line-strong: #3a4545;
+      --primary: #3d9690;
+      --primary-dark: #2f7c77;
+      --key: #232b2b;
+      --key-hover: #2a3333;
+      --warn: #d97a7a;
+      --accent: #223230;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 2px;
+  }
+
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  header p {
+    margin: 0;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+
+  .calc {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 1px 2px rgba(29, 42, 42, 0.04);
+  }
+
+  .display {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--accent);
+    padding: 10px 12px 12px;
+    min-height: 104px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    overflow: hidden;
+  }
+
+  .expression {
+    min-height: 16px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .result {
+    text-align: right;
+    font-size: 38px;
+    line-height: 1.1;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    min-width: 0;
+  }
+
+  .result.small { font-size: 26px; }
+  .result.error { color: var(--warn); }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    min-height: 13px;
+  }
+
+  .keys {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  button {
+    font: inherit;
+    height: 52px;
+    border-radius: 10px;
+    border: 1px solid var(--line-strong);
+    background: var(--key);
+    color: var(--ink);
+    font-size: 18px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color 90ms ease, transform 60ms ease, border-color 90ms ease;
+  }
+
+  button:hover { background: var(--key-hover); }
+  button:active { transform: scale(0.97); }
+  button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  button.fn {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-soft);
+  }
+
+  button.eq {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+  }
+  button.eq:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+
+  button.wide { grid-column: span 2; }
+
+  button.active {
+    border-color: var(--primary);
+    color: var(--primary);
+    font-weight: 600;
+  }
+
+  .hint {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--ink-soft);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .hint kbd {
+    font: inherit;
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 0 4px;
+    background: var(--key);
+  }
+
+  @media (max-width: 380px) {
+    button { height: 46px; font-size: 16.5px; }
+    .result { font-size: 32px; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header>
+    <h1>Calculadora</h1>
+    <p>Modo básico e científico</p>
+  </header>
+
+  <section class="calc" aria-label="Calculadora">
+    <div class="display" role="status" aria-live="polite" aria-atomic="true">
+      <div class="expression" id="expression" aria-hidden="true"></div>
+      <div class="result" id="result">0</div>
+      <div class="meta">
+        <span id="modeLabel">Básico</span>
+        <span id="memoryLabel"></span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button type="button" class="fn" id="toggleSci" style="flex:1;height:34px;font-size:12.5px" aria-pressed="false">Mais funções</button>
+      <button type="button" class="fn" id="degRad" style="flex:1;height:34px;font-size:12.5px" aria-pressed="false">DEG</button>
+    </div>
+
+    <div class="keys" id="keys"></div>
+
+    <p class="hint">
+      Teclado: números, <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd>, <kbd>Enter</kbd> calcula,
+      <kbd>Esc</kbd> limpa, <kbd>Backspace</kbd> apaga
+    </p>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------- estado
+  var MAX_DIGITS = 15;
+
+  var state = {
+    current: "0",       // número sendo digitado
+    previous: null,     // operando anterior (número)
+    operator: null,     // + - × ÷ ^
+    expression: "",     // histórico visual
+    justEvaluated: false,
+    error: false,
+    memory: 0,
+    hasMemory: false,
+    angle: "deg",       // deg | rad
+    scientific: false,
+    lastOperand: null,  // para repetir com "="
+    lastOperator: null,
+    waitingOperand: false
+  };
+
+  var elExpr = document.getElementById("expression");
+  var elResult = document.getElementById("result");
+  var elKeys = document.getElementById("keys");
+  var elMode = document.getElementById("modeLabel");
+  var elMem = document.getElementById("memoryLabel");
+  var btnSci = document.getElementById("toggleSci");
+  var btnAngle = document.getElementById("degRad");
+
+  // ---------------------------------------------------------------- números
+  function pt(n) {
+    return (Math.abs(n) >= 1e15 || (Math.abs(n) < 1e-6 && n !== 0))
+      ? n.toExponential(8).replace(/\.?0+e/, "e")
+      : String(n);
+  }
+
+  /** Evita 0.30000000000000004 etc. */
+  function clean(n) {
+    if (!isFinite(n) || isNaN(n)) return n;
+    var r = parseFloat(n.toPrecision(14));
+    return Object.is(r, -0) ? 0 : r;
+  }
+
+  function format(value) {
+    if (typeof value === "string") return value;
+    if (Number.isNaN(value)) return "Erro";
+    if (!isFinite(value)) return value > 0 ? "∞" : "-∞";
+    var s = pt(value);
+    if (s.indexOf("e") !== -1) return s;
+    var neg = s.charAt(0) === "-";
+    if (neg) s = s.slice(1);
+    var parts = s.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+    return (neg ? "-" : "") + parts.join(",");
+  }
+
+  function parseDisplay() {
+    return parseFloat(state.current.replace(/\s/g, "").replace(",", ".")) || 0;
+  }
+
+  // ---------------------------------------------------------------- cálculo
+  function apply(a, b, op) {
+    switch (op) {
+      case "+": return a + b;
+      case "-": return a - b;
+      case "×": return a * b;
+      case "÷":
+        if (b === 0) throw new Error("Divisão por zero");
+        return a / b;
+      case "^": return Math.pow(a, b);
+      default: return b;
+    }
+  }
+
+  function render() {
+    var text = state.error ? "Erro" : format(state.current);
+    elResult.textContent = text;
+    elResult.classList.toggle("error", state.error);
+    elResult.classList.toggle("small", text.length > 11);
+    elExpr.textContent = state.expression;
+    elExpr.title = state.expression;
+    elMode.textContent = state.scientific ? "Científico · " + state.angle.toUpperCase() : "Básico";
+    elMem.textContent = state.hasMemory ? "M " + format(clean(state.memory)) : "";
+    btnSci.textContent = state.scientific ? "Menos funções" : "Mais funções";
+    btnSci.setAttribute("aria-pressed", String(state.scientific));
+    btnAngle.textContent = state.angle.toUpperCase();
+    btnAngle.setAttribute("aria-pressed", String(state.angle === "rad"));
+    btnAngle.style.visibility = state.scientific ? "visible" : "hidden";
+  }
+
+  function clearAll() {
+    state.current = "0";
+    state.previous = null;
+    state.operator = null;
+    state.expression = "";
+    state.justEvaluated = false;
+    state.error = false;
+    state.lastOperand = null;
+    state.lastOperator = null;
+    state.waitingOperand = false;
+    render();
+  }
+
+  function inputError(message) {
+    state.error = true;
+    state.current = message || "Erro";
+    state.previous = null;
+    state.operator = null;
+    state.waitingOperand = false;
+    render();
+    setTimeout(function () {
+      if (state.error) {
+        state.error = false;
+        state.current = "0";
+        state.expression = "";
+        render();
+      }
+    }, 1800);
+  }
+
+  function pushDigit(d) {
+    if (state.error) clearAll();
+    if (state.justEvaluated) {
+      // digitar depois de "=" começa novo cálculo
+      state.expression = "";
+      state.current = "0";
+      state.justEvaluated = false;
+    }
+    if (state.waitingOperand) {
+      state.current = "0";
+      state.waitingOperand = false;
+    }
+    var digits = state.current.replace(/[-.]/g, "").length;
+    if (digits >= MAX_DIGITS && state.current !== "0") return;
+    if (state.current === "0") state.current = d;
+    else if (state.current === "-0") state.current = "-" + d;
+    else state.current += d;
+    render();
+  }
+
+  function pushDot() {
+    if (state.error) clearAll();
+    if (state.justEvaluated || state.waitingOperand) {
+      state.current = "0";
+      state.justEvaluated = false;
+      state.waitingOperand = false;
+    }
+    if (state.current.indexOf(".") === -1) state.current += ".";
+    render();
+  }
+
+  function backspace() {
+    if (state.error) { clearAll(); return; }
+    if (state.waitingOperand || state.justEvaluated) { state.current = "0"; state.waitingOperand = false; state.justEvaluated = false; render(); return; }
+    state.current = state.current.length > 1 ? state.current.slice(0, -1) : "0";
+    if (state.current === "-") state.current = "0";
+    render();
+  }
+
+  function toggleSign() {
+    if (state.error) return;
+    if (state.current === "0" || state.current === "") return;
+    state.current = state.current.charAt(0) === "-" ? state.current.slice(1) : "-" + state.current;
+    render();
+  }
+
+  function percent() {
+    if (state.error) return;
+    var value = parseDisplay();
+    // 200 + 10% => 200 + 20 (10% do valor anterior)
+    var base = state.previous !== null && (state.operator === "+" || state.operator === "-") ? state.previous : 1;
+    var result = clean((value / 100) * (state.previous !== null && (state.operator === "+" || state.operator === "-") ? base : 1));
+    state.current = pt(result);
+    render();
+  }
+
+  function chooseOperator(op) {
+    if (state.error) clearAll();
+    var value = parseDisplay();
+
+    if (state.operator && state.waitingOperand) {
+      // troca de operador antes de digitar o segundo número
+      state.operator = op;
+      state.expression = format(state.previous) + " " + op;
+      render();
+      return;
+    }
+
+    if (state.previous !== null && state.operator && !state.waitingOperand) {
+      try {
+        value = clean(apply(state.previous, value, state.operator));
+      } catch (e) {
+        inputError(e.message);
+        return;
+      }
+      state.current = pt(value);
+    }
+
+    state.previous = value;
+    state.operator = op;
+    state.expression = format(value) + " " + op;
+    state.waitingOperand = true;
+    state.justEvaluated = false;
+    render();
+  }
+
+  function equals() {
+    if (state.error) return;
+    var value = parseDisplay();
+
+    if (!state.operator) {
+      // Apertar = sem operador repete a última operação, como nas calculadoras de bolso
+      if (state.lastOperator && state.lastOperand !== null) {
+        try {
+          var res = clean(apply(value, state.lastOperand, state.lastOperator));
+          state.expression = format(value) + " " + state.lastOperator + " " + format(state.lastOperand) + " =";
+          state.current = pt(res);
+          render();
+          return;
+        } catch (e) { inputError(e.message); return; }
+      }
+      state.expression = format(value) + " =";
+      state.justEvaluated = true;
+      render();
+      return;
+    }
+
+    var b = state.waitingOperand ? state.previous : value;
+    var first = state.previous;
+    var op = state.operator;
+    try {
+      var result = clean(apply(first, b, op));
+      state.expression = format(first) + " " + op + " " + format(b) + " =";
+      state.current = pt(result);
+      state.lastOperator = op;
+      state.lastOperand = b;
+      state.previous = null;
+      state.operator = null;
+      state.waitingOperand = false;
+      state.justEvaluated = true;
+      render();
+    } catch (e) {
+      inputError(e.message);
+    }
+  }
+
+  // ---------------------------------------------------------------- científicas
+  function toRad(x) { return state.angle === "deg" ? (x * Math.PI) / 180 : x; }
+
+  function unary(label, fn) {
+    if (state.error) clearAll();
+    var value = parseDisplay();
+    try {
+      var result = fn(value);
+      if (typeof result !== "number" || Number.isNaN(result)) throw new Error("Fora do domínio");
+      if (!isFinite(result)) throw new Error("Fora do domínio");
+      state.expression = label + "(" + format(value) + ") =" + (state.operator ? " " + format(state.expression) : "");
+      state.current = pt(clean(result));
+      state.waitingOperand = false;
+      if (state.justEvaluated) state.justEvaluated = false;
+      render();
+    } catch (e) {
+      inputError(e.message);
+    }
+  }
+
+  function handleScientific(fn) {
+    switch (fn) {
+      case "sin": return unary("sen", function (x) { return Math.sin(toRad(x)); });
+      case "cos": return unary("cos", function (x) { return Math.cos(toRad(x)); });
+      case "tan": {
+        var deg = state.angle === "deg" ? ((x) => x)(parseDisplay()) : (parseDisplay() * 180) / Math.PI;
+        if (state.angle === "deg" && Math.abs(deg % 180 - 90) < 1e-9) return inputError("Indefinido");
+        return unary("tg", function (x) { return Math.tan(toRad(x)); });
+      }
+      case "ln": return unary("ln", function (x) {
+        if (x <= 0) throw new Error("Fora do domínio");
+        return Math.log(x);
+      });
+      case "log": return unary("log", function (x) {
+        if (x <= 0) throw new Error("Fora do domínio");
+        return Math.log10(x);
+      });
+      case "sqrt": return unary("√", function (x) {
+        if (x < 0) throw new Error("Fora do domínio");
+        return Math.sqrt(x);
+      });
+      case "square": return unary("²", function (x) { return x * x; });
+      case "inv": return unary("1/", function (x) {
+        if (x === 0) throw new Error("Divisão por zero");
+        return 1 / x;
+      });
+      case "fact": return unary("!", function (x) {
+        if (x < 0 || Math.floor(x) !== x) throw new Error("Use inteiro");
+        if (x > 170) throw new Error("Muito grande");
+        var r = 1;
+        for (var i = 2; i <= x; i++) r *= i;
+        return r;
+      });
+      case "pi":
+        state.current = pt(Math.PI);
+        state.waitingOperand = false;
+        state.justEvaluated = false;
+        return render();
+      case "e":
+        state.current = pt(Math.E);
+        state.waitingOperand = false;
+        state.justEvaluated = false;
+        return render();
+      case "pow":
+        return chooseOperator("^");
+      default: return;
+    }
+  }
+
+  function memory(op) {
+    var value = parseDisplay();
+    switch (op) {
+      case "MC": state.memory = 0; state.hasMemory = false; break;
+      case "MR": if (state.hasMemory) { state.current = pt(clean(state.memory)); state.waitingOperand = false; state.justEvaluated = false; } break;
+      case "M+": state.memory = clean(state.memory + value); state.hasMemory = true; break;
+      case "M-": state.memory = clean(state.memory - value); state.hasMemory = true; break;
+      case "MS": state.memory = value; state.hasMemory = true; break;
+    }
+    render();
+  }
+
+  // ---------------------------------------------------------------- teclado de botões
+  function makeButton(label, options) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    if (options && options.cls) b.className = options.cls;
+    if (options && options.aria) b.setAttribute("aria-label", options.aria);
+    b.addEventListener("click", options.onClick);
+    return b;
+  }
+
+  function renderKeys() {
+    elKeys.innerHTML = "";
+
+    if (state.scientific) {
+      [
+        ["MC", function () { memory("MC"); }],
+        ["MR", function () { memory("MR"); }],
+        ["M+", function () { memory("M+"); }],
+        ["M−", function () { memory("M-"); }],
+        ["sen", function () { handleScientific("sin"); }],
+        ["cos", function () { handleScientific("cos"); }],
+        ["tg", function () { handleScientific("tan"); }],
+        ["π", function () { handleScientific("pi"); }],
+        ["ln", function () { handleScientific("ln"); }],
+        ["log", function () { handleScientific("log"); }],
+        ["√", function () { handleScientific("sqrt"); }],
+        ["e", function () { handleScientific("e"); }],
+        ["x²", function () { handleScientific("square"); }],
+        ["1/x", function () { handleScientific("inv"); }],
+        ["n!", function () { handleScientific("fact"); }],
+        ["xʸ", function () { handleScientific("pow"); }]
+      ].forEach(function (k) {
+        elKeys.appendChild(makeButton(k[0], { cls: "fn", onClick: k[1] }));
+      });
+    }
+
+    [
+      ["C", "Limpar tudo", function () { clearAll(); }],
+      ["⌫", "Apagar último dígito", function () { backspace(); }],
+      ["%", "Porcentagem", function () { percent(); }],
+      ["÷", "Dividir", function () { chooseOperator("÷"); }],
+
+      ["7", null, function () { pushDigit("7"); }],
+      ["8", null, function () { pushDigit("8"); }],
+      ["9", null, function () { pushDigit("9"); }],
+      ["×", "Multiplicar", function () { chooseOperator("×"); }],
+
+      ["4", null, function () { pushDigit("4"); }],
+      ["5", null, function () { pushDigit("5"); }],
+      ["6", null, function () { pushDigit("6"); }],
+      ["−", "Subtrair", function () { chooseOperator("-"); }],
+
+      ["1", null, function () { pushDigit("1"); }],
+      ["2", null, function () { pushDigit("2"); }],
+      ["3", null, function () { pushDigit("3"); }],
+      ["+", "Somar", function () { chooseOperator("+"); }],
+
+      ["±", "Trocar sinal", function () { toggleSign(); }],
+      ["0", null, function () { pushDigit("0"); }],
+      [",", "Vírgula decimal", function () { pushDot(); }],
+      ["=", "Resultado", function () { equals(); }]
+    ].forEach(function (k) {
+      var cls = k[0] === "=" ? "eq" : ["C", "⌫", "%", "±"].indexOf(k[0]) !== -1 ? "fn" : "";
+      elKeys.appendChild(makeButton(k[0], { cls: cls, aria: k[1] || undefined, onClick: k[2] }));
+    });
+  }
+
+  // ---------------------------------------------------------------- eventos
+  btnSci.addEventListener("click", function () {
+    state.scientific = !state.scientific;
+    renderKeys();
+    render();
+  });
+
+  btnAngle.addEventListener("click", function () {
+    state.angle = state.angle === "deg" ? "rad" : "deg";
+    render();
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+
+    if (/^[0-9]$/.test(k)) { e.preventDefault(); pushDigit(k); return; }
+    switch (k) {
+      case ".": case ",": e.preventDefault(); pushDot(); break;
+      case "+": e.preventDefault(); chooseOperator("+"); break;
+      case "-": e.preventDefault(); chooseOperator("-"); break;
+      case "*": case "x": case "X": e.preventDefault(); chooseOperator("×"); break;
+      case "/": e.preventDefault(); chooseOperator("÷"); break;
+      case "^": e.preventDefault(); chooseOperator("^"); break;
+      case "%": e.preventDefault(); percent(); break;
+      case "Enter": case "=": e.preventDefault(); equals(); break;
+      case "Backspace": e.preventDefault(); backspace(); break;
+      case "Delete": case "Escape": e.preventDefault(); clearAll(); break;
+      case "s": case "S": toggleSign(); break;
+      default: break;
+    }
+  });
+
+  renderKeys();
+  render();
+})();
+</script>
+</body>
+</html>
